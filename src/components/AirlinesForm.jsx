@@ -8,20 +8,24 @@ import Spinner from "react-bootstrap/Spinner"; // Import Spinner component
 import "../styles/AirlinesFormStyle.css";
 
 const AirlinesForm = () => {
-  // Define state variables to store form field values
-  const [formData, setFormData] = useState({
+  const [flights, setFlights] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [validationErrors, setValidationErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  const initialFormData = {
     departureAirport: "",
     destinationAirport: "",
     departureDate: "",
     returnDate: "",
     numberOfPassengers: "",
     currency: "EUR",
-  });
-  const [flights, setFlights] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [validationErrors, setValidationErrors] = useState({});
-  const [loading, setLoading] = useState(false);
+  };
 
+  const [formData, setFormData] = useState(initialFormData);
+
+  //_________________________________________________________________________
+  // PAGINATION
   // Calculate index of the first flight on the current page
   const flightsPerPage = 10;
   const indexOfLastFlight = currentPage * flightsPerPage;
@@ -32,6 +36,7 @@ const AirlinesForm = () => {
   for (let i = 1; i <= Math.ceil(flights.length / flightsPerPage); i++) {
     pageNumbers.push(i);
   }
+  //_________________________________________________________________________
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -95,6 +100,8 @@ const AirlinesForm = () => {
       console.log(data);
       setFlights(data.data);
       setCurrentPage(1);
+      //clearing form values
+      setFormData(initialFormData);
     } catch (err) {
       console.log(err);
     } finally {
@@ -106,15 +113,14 @@ const AirlinesForm = () => {
     const currencySymbols = {
       EUR: "€",
       USD: "$",
-      // Add more currency symbols as needed
+      HRK: "kn",
     };
     const currencySymbol = currencySymbols[currencyCode] || currencyCode;
     return `${amount}${currencySymbol}`;
   };
 
   const formatDate = (timestamp) => {
-    const dateObject = new Date(timestamp);
-    return dateObject.toISOString().split("T")[0];
+    return timestamp.split("T")[0];
   };
 
   const handleSubmit = (e) => {
@@ -243,6 +249,7 @@ const AirlinesForm = () => {
               >
                 <option value="EUR">EUR</option>
                 <option value="USD">USD</option>
+                <option value="HRK">HRK</option>
               </Form.Select>
               <Form.Control.Feedback type="invalid">
                 {validationErrors.currency}
@@ -267,72 +274,86 @@ const AirlinesForm = () => {
           </div>
         ) : (
           <>
-            <Table striped bordered hover>
-              <thead>
-                <tr>
-                  <th>Departure Airport</th>
-                  <th>Destination Airport</th>
-                  <th>Departure Date</th>
-                  <th>Return Date</th>
-                  <th>Number of Stops (Outbound)</th>
-                  <th>Number of Stops (Inbound)</th>
-                  <th>Number of Passengers</th>
-                  <th>Currency</th>
-                  <th>Total Price</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentFlights.map((flight, index) => (
-                  <tr key={index}>
-                    <td>
-                      {flight.itineraries[0]?.segments[0]?.departure?.iataCode}
-                    </td>
-                    <td>
-                      {flight.itineraries[0]?.segments[0]?.arrival?.iataCode}
-                    </td>
-                    <td>
-                      {formatDate(
-                        flight.itineraries[0]?.segments[0]?.departure?.at
-                      )}
-                    </td>
-                    <td>
-                      {flight.itineraries[1]?.segments?.length > 0
-                        ? formatDate(
-                            flight.itineraries[1]?.segments[
-                              flight.itineraries[1]?.segments.length - 1
-                            ]?.arrival?.at
-                          )
-                        : "N/A"}
-                    </td>
-                    <td>{flight.itineraries[0]?.segments?.length - 1}</td>
-                    <td>
-                      {flight.itineraries[1]?.segments?.length - 1 || "N/A"}
-                    </td>
-                    <td>{formData.numberOfPassengers}</td>
-                    <td>{formData.currency}</td>{" "}
-                    {/* Display selected currency */}
-                    <td>
-                      {formatCurrency(
-                        flight.price?.currency,
-                        flight.price?.total
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-            {/* Pagination */}
-            <Pagination>
-              {pageNumbers.map((number) => (
-                <Pagination.Item
-                  key={number}
-                  active={number === currentPage}
-                  onClick={() => paginate(number)}
-                >
-                  {number}
-                </Pagination.Item>
-              ))}
-            </Pagination>
+            {flights.length === 0 ? (
+              <div className="text-center">
+                <p>No direct flights found</p>
+              </div>
+            ) : (
+              <>
+                <Table striped bordered hover>
+                  <thead>
+                    <tr>
+                      <th>Departure Airport</th>
+                      <th>Destination Airport</th>
+                      <th>Departure Date</th>
+                      <th>Return Date</th>
+                      <th>Number of Stops (Outbound)</th>
+                      <th>Number of Stops (Inbound)</th>
+                      <th>Number of Passengers</th>
+                      <th>Currency</th>
+                      <th>Total Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentFlights.map((flight, index) => (
+                      <tr key={index}>
+                        <td>
+                          {
+                            flight.itineraries[0]?.segments[0]?.departure
+                              ?.iataCode
+                          }
+                        </td>
+                        <td>
+                          {
+                            flight.itineraries[0]?.segments[0]?.arrival
+                              ?.iataCode
+                          }
+                        </td>
+                        <td>
+                          {formatDate(
+                            flight.itineraries[0]?.segments[0]?.departure?.at
+                          )}
+                        </td>
+                        <td>
+                          {flight.itineraries[1]?.segments?.length > 0
+                            ? formatDate(
+                                flight.itineraries[1]?.segments[
+                                  flight.itineraries[1]?.segments.length - 1
+                                ]?.arrival?.at
+                              )
+                            : "N/A"}
+                        </td>
+                        <td>{flight.itineraries[0]?.segments?.length - 1}</td>
+                        <td>
+                          {flight.itineraries[1]?.segments?.length - 1 || "N/A"}
+                        </td>
+                        <td>{flight.numberOfBookableSeats}</td>
+                        <td>{flight.price.currency}</td>{" "}
+                        {/* Display selected currency */}
+                        <td>
+                          {formatCurrency(
+                            flight.price?.currency,
+                            flight.price?.total
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+                {/* Pagination */}
+                <Pagination>
+                  {pageNumbers.map((number) => (
+                    <Pagination.Item
+                      key={number}
+                      active={number === currentPage}
+                      onClick={() => paginate(number)}
+                    >
+                      {number}
+                    </Pagination.Item>
+                  ))}
+                </Pagination>
+              </>
+            )}
           </>
         )}
       </div>
